@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Chat from './pages/Chat';
-import ChatList from './pages/ChatList';
+import ChatList from './components/ChatList';
 
 function App() {
   return (

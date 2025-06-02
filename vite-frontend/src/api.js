@@ -15,6 +15,7 @@ export const getFriends = () => API.get('/api/users/friends');
 export const sendRequest = (userData) => API.post('/api/users/send-request', userData);
 export const getFriendRequests = () => API.get('/api/users/friend-requests');
 export const acceptRequest = (senderId) => API.post('/api/users/accept-request', { senderId });
+export const getUserById = (id) => API.get(`/api/users/user-by-id?id=${id}`);
 export const searchUsers = (query) => API.get(`/api/users/search?query=${query}`);
 
 // ===== Messages =====

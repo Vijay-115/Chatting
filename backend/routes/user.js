@@ -67,6 +67,17 @@ router.get('/friend-requests', authMiddleware, async (req, res) => {
   res.json(receiver.friendRequests);
 });
 
+router.get('/user-by-id', authMiddleware, async (req, res) => {
+  const id = req.query.id;
+  try {
+    const user = await User.findById(id).select('-password'); // Don't send password
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 
 router.post('/accept-request', authMiddleware, async (req, res) => {
   const { senderId } = req.body;

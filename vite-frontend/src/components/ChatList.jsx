@@ -30,13 +30,15 @@ const ChatList = () => {
     }, [latestMessages]);
 
   return (
-    <div>
-      <h2>Chats</h2>
-      {friends.map((f) => (
+    <div className='pt-8'>
+      <h3 className='text-lg font-bold mb-2 text-left'>Chats:</h3>
+      {friends.map((f, index) => (
         <Link key={f._id} to={`/chat/${f._id}`}>
-          <div style={{ padding: 10, borderBottom: '1px solid #ccc' }}>
+          <div className={`p-3 rounded-md ${
+            index % 2 === 0 ? 'bg-sky-100' : 'bg-sky-200'
+          }`}>
             <strong>{f.username}</strong>
-            <p>{latestMessages[f._id]?.text || 'No messages yet'}</p>
+            <p className='text-[13px]'>{latestMessages[f._id]?.text || 'No messages yet'}</p>
           </div>
         </Link>
       ))}

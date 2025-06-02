@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
-import { getMessages, markMessagesRead, uploadFile, verifyMedia } from '../api';
+import { MdOutlineAddPhotoAlternate } from "react-icons/md";
+import { getMessages, getUserById, markMessagesRead, uploadFile, verifyMedia } from '../api';
 
 const Chat = () => {
   const { id } = useParams(); // friend's userId
@@ -10,6 +11,7 @@ const Chat = () => {
   const { user } = useAuth();
 
   const [text, setText] = useState('');
+  const [toUser, setToUser] = useState('');
   const [typingUsers, setTypingUsers] = useState([]);
   const [messages, setMessages] = useState([]);
   const typingTimeout = useRef(null);
@@ -23,13 +25,27 @@ const Chat = () => {
     const fetchMessages = async () => {
       try {
         const res = await getMessages(id);
-        setMessages(res.data);
+        setMessages(res.data); // assuming res.data is an array of messages
       } catch (err) {
         console.error('Error fetching messages:', err);
       }
     };
-    if (id) fetchMessages();
+
+    const fetchUser = async () => {
+      try {
+        const res = await getUserById(id);
+        setToUser(res.data); // assuming res.data is the user object
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    };
+
+    if (id) {
+      fetchMessages();
+      fetchUser();
+    }
   }, [id]);
+
 
   useEffect(() => {
     if (!socket) return;
@@ -209,64 +225,100 @@ const Chat = () => {
     }
   };
 
+  const fileInputRef = useRef(null);
+
+  const handleIconClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
-    <div>
-      <h2 className='text-blue-500'>Chat</h2>
-
-      <div style={{ height: 300, overflowY: 'scroll', border: '1px solid #ccc', padding: '10px' }}>
-        {messages.map((msg, index) => (
-          <div key={index} style={{ textAlign: msg.from === user._id ? 'right' : 'left' }}>
-            {msg.text && <p>{msg.text}</p>}
-            {msg.media && (
-              <div>
-                <button onClick={() => handleMediaClick(msg.media)}>🔒 View Media</button>
-              </div>
-            )}
-            <small>{msg.read ? '✔✔' : '✔'}</small>
+    <div className='m-auto flex flex-col item-center h-screen'>
+      <div className='m-auto min-w-[300px] w-full max-w-[80vw]'>
+        <h2 className='text-2xl font-bold mb-5 text-center'>Chat</h2>
+        <div className='bg-white pt-8 pl-8 pr-2 rounded-lg shadow-lg min-h-[80vh] '>
+          <div className='pb-2.5'>
+            <h2 className='text-xl font-bold mb-1'>{toUser.username}</h2>
+            <p className='text-sm font-normal'>{toUser.mobile	}</p>
           </div>
-        ))}
-      </div>
-
-      <input
-        value={text}
-        onChange={handleTyping}
-        placeholder="Type a message..."
-      />
-      <input type="file" onChange={handleFileChange} />
-      {typingUsers.includes(id) && <p><em>Typing...</em></p>}
-      <button onClick={sendMessage}>Send</button>
-
-      {showImageModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100%',
-          height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', flexDirection: 'column'
-        }}>
-          {!decodedImage ? (
-            <div style={{ background: '#fff', padding: 20, borderRadius: 8 }}>
-              <p>Enter password to view media:</p>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <button onClick={handlePasswordSubmit}>Submit</button>
-              <button onClick={() => setShowImageModal(false)}>Cancel</button>
-            </div>
-          ) : (
-            <div style={{ background: '#fff', padding: 20, borderRadius: 8 }}>
-              <img src={decodedImage} alt="Decoded" style={{ maxWidth: '90vw', maxHeight: '80vh' }} />
-              <br />
-              <button onClick={() => {
-                setShowImageModal(false);
-                setDecodedImage(null);
-              }}>Close</button>
-            </div>
-          )}
+          <div className='h-[73vh] overflow-y-auto pr-5'>
+            {messages.map((msg, index) => (
+              <div
+                className={`w-full flex ${msg.from === user._id ? 'justify-end' : 'justify-start'}`}
+                key={index}
+              >
+                <div className='bg-sky-100 w-max p-2 px-5 rounded-[25px] mb-2 relative'>
+                  {msg.text && <p className='pr-7'>{msg.text}</p>}
+                  {msg.media && (
+                    <div className='pr-7'>
+                      <button onClick={() => handleMediaClick(msg.media)}>🔒 View Media</button>
+                    </div>
+                  )}
+                  <small className='absolute bottom-1 right-3'>
+                    {msg.read ? (
+                      <span className="text-green-500">✔✔</span>
+                    ) : (
+                      <span className="text-gray-400">✔</span>
+                    )}
+                  </small>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className='typesec flex items-center pt-2 pb-4'>
+              <div className='w-[65vw] flex items-center relative'>
+                  <input
+                    value={text}
+                    onChange={handleTyping}
+                    placeholder="Type a message..."
+                    className='bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500'
+                  />
+                  <div onClick={handleIconClick} className="cursor-pointer text-lg absolute right-3">
+                    <MdOutlineAddPhotoAlternate />
+                    <input
+                      ref={fileInputRef}
+                      id="uploadmedia"
+                      className="hidden"
+                      type="file"
+                      onChange={handleFileChange}
+                    />
+                  </div>
+              </div>
+              <div className='w-auto ml-auto pr-5'>
+                  <button className="text-white ml-auto bg-blue-500 shadow-lg shadow-blue-500/50 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" onClick={sendMessage}>Send</button>
+              </div>
+              {typingUsers.includes(id) && <p><em>Typing...</em></p>}
+              {showImageModal && (
+                <div style={{
+                  position: 'fixed', top: 0, left: 0, width: '100%',
+                  height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', flexDirection: 'column'
+                }}>
+                  {!decodedImage ? (
+                    <div style={{ background: '#fff', padding: 20, borderRadius: 8 }}>
+                      <p>Enter password to view media:</p>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <button onClick={handlePasswordSubmit}>Submit</button>
+                      <button onClick={() => setShowImageModal(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={{ background: '#fff', padding: 20, borderRadius: 8 }}>
+                      <img src={decodedImage} alt="Decoded" style={{ maxWidth: '90vw', maxHeight: '80vh' }} />
+                      <br />
+                      <button onClick={() => {
+                        setShowImageModal(false);
+                        setDecodedImage(null);
+                      }}>Close</button>
+                    </div>
+                  )}
+                </div>
+              )}
+          </div>
         </div>
-      )}
-
+      </div>
     </div>
   );
 };
