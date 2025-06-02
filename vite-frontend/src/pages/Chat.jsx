@@ -212,7 +212,7 @@ const Chat = () => {
 
   return (
     <div>
-      <h2>Chat</h2>
+      <h2 className='text-blue-500'>Chat</h2>
 
       <div style={{ height: 300, overflowY: 'scroll', border: '1px solid #ccc', padding: '10px' }}>
         {messages.map((msg, index) => (
