@@ -26,6 +26,7 @@ router.get('/latest', auth, async (req, res) => {
             '$from',
           ],
         },
+        from: {$first: '$from'},
         text: { $first: '$text' },
         createdAt: { $first: '$createdAt' },
         read: { $first: '$read' },

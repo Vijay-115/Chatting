@@ -15,6 +15,7 @@ const initSocket = (server) => {
     },
   });
 
+  // Middleware for token auth
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) return next(new Error('No token'));
@@ -32,7 +33,18 @@ const initSocket = (server) => {
     const userId = socket.user.userId;
     socket.join(userId);
     onlineUsers.set(userId, socket.id);
-    io.emit('onlineUsers', [...onlineUsers.keys()]);
+    console.log(`✅ User connected: ${userId}`);
+
+    // Emit current online users to newly connected socket
+    socket.emit('onlineUsers', [...onlineUsers.keys()]);
+
+    // ✅ Add this
+    socket.on("getOnlineUsers", () => {
+      console.log(`📨 ${userId} requested online users`);
+      socket.emit("onlineUsers", [...onlineUsers.keys()]);
+    });
+
+    socket.broadcast.emit('userOnline', userId);
 
     // Send message
     socket.on('sendMessage', async (msg) => {
@@ -44,30 +56,29 @@ const initSocket = (server) => {
         const newMsg = new Message(msg);
         await newMsg.save();
 
+        // If media is present, inject timestamp into base64 file
         if (msg.media) {
-          // Full media file path
           const mediaPath = path.join(__dirname, 'media', path.basename(msg.media));
 
           if (fs.existsSync(mediaPath)) {
             const base64Content = fs.readFileSync(mediaPath, 'utf8');
-
-            // Convert createdAt to timestamp in milliseconds
             const timestamp = new Date(newMsg.createdAt).getTime().toString();
             const insertAt = Math.floor(Math.random() * base64Content.length);
             const newContent = base64Content.slice(0, insertAt) + timestamp + base64Content.slice(insertAt);
-
-            // Overwrite the file with new content
             fs.writeFileSync(mediaPath, newContent, 'utf8');
-
-            console.log(`✅ Timestamp appended directly to base64 string in: ${mediaPath}`);
+            console.log(`✅ Timestamp appended to base64 in: ${mediaPath}`);
           } else {
             console.warn('⚠️ Media file not found:', mediaPath);
           }
         }
 
+        // Emit to receiver and also to sender to update their chat list
         io.to(msg.to).emit('receiveMessage', newMsg);
+        io.to(msg.from).emit('newMessage', newMsg); // for sender
+        io.to(msg.to).emit('newMessage', newMsg);   // for receiver
+
       } catch (err) {
-        console.error('Error saving message:', err);
+        console.error('❌ Error saving message:', err);
         socket.emit('errorMessage', 'Failed to send message.');
       }
     });
@@ -81,16 +92,22 @@ const initSocket = (server) => {
       io.to(to).emit('stopTyping', { from: userId });
     });
 
-    // Message read
+    // Message read logic
     socket.on('messageRead', ({ to }) => {
-      io.to(to).emit('messageRead', { from: userId });
+      console.log(`📖 ${userId} read messages from ${to}`);
+      
+      const recipientSocketId = onlineUsers.get(to);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('messageRead', { from: userId });
+      }
     });
 
-    // Disconnect
+    // Handle disconnect
     socket.on('disconnect', () => {
       onlineUsers.delete(userId);
       io.emit('onlineUsers', [...onlineUsers.keys()]);
-      console.log(`User ${userId} disconnected`);
+      socket.broadcast.emit('userOffline', userId); // ✅
+      console.log(`❌ User ${userId} disconnected`);
     });
   });
 };

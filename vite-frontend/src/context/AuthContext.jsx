@@ -1,9 +1,16 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../api';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -33,10 +40,11 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-
+      toast.success("Login successful");
       navigate('/dashboard');
     } catch (err) {
       console.error('Login failed:', err);
+      toast.error(err.response.data.message);
     }
   };
 
@@ -45,6 +53,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user'); // Don't forget to remove user too
+    toast.success("Successfully Logout");
     navigate('/');
   };
 

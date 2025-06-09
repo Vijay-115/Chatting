@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { acceptRequest, getFriendRequests, getFriends, searchUsers, sendRequest } from '../api';
 import { IoNotificationsOutline } from "react-icons/io5";
@@ -6,6 +6,7 @@ import { LuUserRoundPlus } from "react-icons/lu";
 import { IoSearchSharp } from "react-icons/io5";
 import { BiLogOut } from "react-icons/bi";
 import ChatList from '../components/ChatList';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { logout, user } = useAuth();
@@ -13,6 +14,13 @@ const Dashboard = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [requests, setRequests] = useState([]);
+
+  const [showRequests, setShowRequests] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const requestRef = useRef();
+  const notificationRef = useRef();
+
   // const [friends, setFriends] = useState([]);
 
   // useEffect(() => {
@@ -29,10 +37,16 @@ const Dashboard = () => {
   // };
 
   useEffect(() => {
-    if(user){
+    if (user) {
+      console.log('user - ', user);
       setCurrentUser(user);
     }
   }, [user]);
+
+  useEffect(() => {
+    console.log('currentUser changed - ', currentUser);
+  }, [currentUser]);
+
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -40,6 +54,16 @@ const Dashboard = () => {
       setRequests(data); // [{ _id, username, mobile }]
     };
     fetchRequests();
+  }, []);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!requestRef.current?.contains(e.target)) setShowRequests(false);
+      if (!notificationRef.current?.contains(e.target)) setShowNotifications(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   const handleSearchChange = async (e) => {
@@ -55,10 +79,17 @@ const Dashboard = () => {
     }
   };
 
+  
+  useEffect(() => {
+    console.log('setResults changed - ', results);
+    console.log('currentUser changed - ', currentUser);
+  }, [results]);
+
+
   const handleSendRequest = async (id) => {
     try {
       await sendRequest({ receiverId: id });
-      alert('Request sent');
+      toast.success("Request Sent");
     } catch (error) {
       console.error('handleSendRequest failed:', error);
     }
@@ -67,7 +98,7 @@ const Dashboard = () => {
   const handleAcceptRequest = async (id) => {
     try {
       await acceptRequest(id);
-      alert('Request Accept');
+      toast.success("Request Accept");
     } catch (error) {
       console.error('handleSendRequest failed:', error);
     }
@@ -103,29 +134,74 @@ const Dashboard = () => {
                   <div className='w-10 mx-auto flex-initial'>
                       <button className='text-center block mx-auto text-2xl' onClick={logout}><BiLogOut/></button>
                   </div>
-                  <div className='w-10 mx-auto flex-initial relative'>
-                      <div className='requestIcon'> 
-                          <button className='text-center block mx-auto text-2xl'  onClick={logout}><LuUserRoundPlus/></button>
-                          <span className='bg-red-700 block w-[18px] h-[18px] rounded-[50%] text-[0.65em] leading-[1.7em] font-bold text-center text-white absolute top-[-15px] right-0'>5</span>
+                  <div
+                    className="w-10 mx-auto flex-initial relative"
+                    ref={requestRef}
+                    onMouseEnter={() => setShowRequests(true)}
+                    onMouseLeave={() => setShowRequests(false)}
+                  >
+                    <div className="requestIcon">
+                      <button
+                        className="text-center block mx-auto text-2xl"
+                        onClick={() => setShowRequests(!showRequests)}
+                      >
+                        <LuUserRoundPlus />
+                      </button>
+                      <span className="bg-red-700 block w-[18px] h-[18px] rounded-full text-[0.65em] leading-[1.7em] font-bold text-center text-white absolute top-[-15px] right-0">
+                        {requests?.length || 0}
+                      </span>
+                    </div>
+
+                    {showRequests && (
+                      <div className="requestSec bg-white p-4 rounded-lg shadow-lg absolute top-[25px] right-[-65px] min-w-[200px] z-50">
+                        <h3 className="font-semibold mb-2">Requests:</h3>
+                        {requests?.length > 0 ? (
+                          <>
+                            <ul className="space-y-2">
+                              {requests.map((user) => (
+                                <li key={user._id} className="text-sm flex justify-between items-center">
+                                  <span className='text-[13px]'>{user.username} ({user.mobile})</span>
+                                  <button
+                                    onClick={() => handleAcceptRequest(user._id)}
+                                    className="ml-2 text-white bg-blue-500 shadow-lg shadow-blue-500/50 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-[11px] w-full sm:w-auto px-2 py-1.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                                  >
+                                    Accept
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        ) : (
+                          <p className="text-sm text-gray-500">No new requests</p>
+                        )}
                       </div>
-                      <div className='requestSec bg-white p-8 rounded-lg shadow-lg absolute top-[35px] right-[-40px]'>                                     
-                          { requests && (
-                            <>
-                              <h3>Request:</h3>
-                              <ul>
-                                {requests.map(user => (
-                                  <li key={user._id}>
-                                    {user.username} ({user.mobile}) <button onClick={() => handleAcceptRequest(user._id)}>Accept Request</button>
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          )}
-                      </div>
+                    )}
                   </div>
-                  <div className='w-10 mx-auto flex-initial relative'>
-                      <button className='text-center block mx-auto text-2xl'  onClick={logout}><IoNotificationsOutline/></button>
-                      <span className='bg-red-700 block w-[18px] h-[18px] rounded-[50%] text-[0.65em] leading-[1.7em] font-bold text-center text-white absolute top-[-15px] right-0'>10</span>
+                  <div
+                    className="w-10 mx-auto flex-initial relative"
+                    ref={notificationRef}
+                    onMouseEnter={() => setShowNotifications(true)}
+                    onMouseLeave={() => setShowNotifications(false)}
+                  >
+                    <button
+                      className="text-center block mx-auto text-2xl"
+                      onClick={() => setShowNotifications(!showNotifications)}
+                    >
+                      <IoNotificationsOutline />
+                    </button>
+                    <span className="bg-red-700 block w-[18px] h-[18px] rounded-full text-[0.65em] leading-[1.7em] font-bold text-center text-white absolute top-[-15px] right-0">
+                      0
+                    </span>
+
+                    {showNotifications && (
+                      <div className="bg-white p-4 rounded-lg shadow-lg absolute top-[25px] right-[-20px] min-w-[200px] z-50">
+                        <h3 className="font-semibold mb-2">Notifications:</h3>
+                        <ul className="space-y-1 text-sm text-gray-700">
+                          <li>No new notifications.</li>
+                          {/* You can map notification data here */}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

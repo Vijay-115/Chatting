@@ -1,27 +1,33 @@
+// context/SocketContext.jsx
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
-const SocketContext = createContext();
+const SocketContext = createContext(null);
+
 export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
   const { token } = useAuth();
   const [socketInstance, setSocketInstance] = useState(null);
-  const socket = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     if (token) {
       const s = io('http://localhost:5000', {
         auth: { token },
+        transports: ['websocket'],
+        reconnectionAttempts: 5,
       });
 
-      socket.current = s;
+      socketRef.current = s;
       setSocketInstance(s);
 
-      return () => {
-        s.disconnect();
-      };
+      s.on('connect', () => {
+        console.log('✅ Socket connected');
+      });
+
+      return () => s.disconnect();
     }
   }, [token]);
 
