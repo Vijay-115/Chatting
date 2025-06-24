@@ -1,0 +1,28 @@
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/chatvdxy/backend.chat-vd.xyz"
+PassengerBaseURI "/"
+PassengerNodejs "/home/chatvdxy/nodevenv/backend.chat-vd.xyz/20/bin/node"
+PassengerAppType node
+PassengerStartupFile server.js
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+
+# ✅ Enable mod_rewrite
+RewriteEngine On
+
+# ✅ WebSocket proxying to Express port 5000
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteCond %{HTTP:Connection} upgrade [NC]
+RewriteRule ^socket.io/(.*) ws://127.0.0.1:5000/socket.io/$1 [P,L]
+
+# ✅ API and frontend routing fallback to Express
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
+
+# ✅ Optional: Add CORS headers for static preflight if not handled by Express
+<IfModule mod_headers.c>
+  Header always set Access-Control-Allow-Origin "https://chat-vd.xyz"
+  Header always set Access-Control-Allow-Credentials "true"
+  Header always set Access-Control-Allow-Methods "GET,POST,PUT,DELETE,OPTIONS"
+  Header always set Access-Control-Allow-Headers "Content-Type,Authorization"
+</IfModule>

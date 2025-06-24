@@ -108,7 +108,7 @@ const Dashboard = () => {
     <>
       <div className='m-auto flex flex-col item-center h-screen'>
         <div className='m-auto min-w-[300px] w-full max-w-[80vw]'>
-            <h3 className='text-2xl font-bold mb-5 text-left'>Dashboard</h3>
+            {/* <h3 className='text-2xl font-bold mb-5 text-left'>Dashboard</h3> */}
             <div className='bg-white p-8 rounded-lg shadow-lg min-h-[80vh] '>
               <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
                 <div class="md:max-w-[65vw] md:flex-initial w-full md:mr-auto mb-6 md:mb-0 ">   

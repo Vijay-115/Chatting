@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
-import { MdOutlineAddPhotoAlternate } from "react-icons/md";
+import { useDropzone } from 'react-dropzone';
+import { MdOutlineAddPhotoAlternate } from 'react-icons/md';
 import { getMessages, getUserById, markMessagesRead, uploadFile, verifyMedia } from '../api';
 import { LuCheck } from "react-icons/lu";
 import { LuCheckCheck } from "react-icons/lu";
 import { IoArrowUndo } from "react-icons/io5";
 import moment from 'moment';
+import toast from 'react-hot-toast';
 
 const Chat = () => {
   const { id } = useParams(); // friend's userId
@@ -27,6 +29,7 @@ const Chat = () => {
   const bottomRef = useRef(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isOnline, setIsOnline] = useState(false); // 👈 should be boolean
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(()=>{
     console.log('Chat screen socket - ',socket);
@@ -202,37 +205,64 @@ const Chat = () => {
     }, 1500);
   };
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (file) => {
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64Data = reader.result; // data:image/png;base64,...
+    const formData = new FormData();
+    formData.append('file', file);
 
-      try {
-        const res = await uploadFile({
-          data: base64Data,
-          name: file.name,
-        });
+    setIsUploading(true); // Start loading
 
-        const mediaUrl = res.data.filePath;
-        console.log('Media URL:', mediaUrl);
+    try {
+      const res = await uploadFile(formData);
+      const mediaUrl = res.data.filePath;
 
-        const msg = {
-          to: id,
-          from: user._id,
-          media: mediaUrl,
-        };
+      console.log('✅ Media uploaded:', mediaUrl);      
+      toast.success(`✅ Media Uploaded`);
 
-        socket.emit('sendMessage', msg);
-        setMessages((prev) => [...prev, msg]);
-      } catch (err) {
-        console.error('File upload error:', err);
-      }
-    };
+      const msg = {
+        to: id,
+        from: user._id,
+        media: mediaUrl,
+        createdAt: new Date().toISOString(), // ✅ Add createdAt timestamp
+      };
 
-    reader.readAsDataURL(file); // ⬅️ Converts to base64
+      socket.emit('sendMessage', msg);
+      setMessages((prev) => [...prev, msg]);
+    } catch (err) {
+      console.error('❌ File upload error:', err);
+      toast.error('❌ File upload failed');
+    } finally {
+      setIsUploading(false); // Stop loading
+    }
+  };
+
+  const FileUploadInput = ({ onFileSelected }) => {
+    const { getRootProps, getInputProps } = useDropzone({
+      accept: { 'image/*': [] },
+      multiple: false,
+      noClick: false,
+      onDrop: (acceptedFiles) => {
+        const file = acceptedFiles[0];
+        console.log('📂 File selected:', file);
+        if (file) {
+          onFileSelected(file);
+        }
+      },
+    });
+
+    return (
+      <div
+        {...getRootProps()}
+        className="cursor-pointer text-lg absolute top-[-.60rem] right-[1.25rem]"
+        title="Upload Photo"
+      >
+        <input {...getInputProps()} />
+        <MdOutlineAddPhotoAlternate />
+      </div>
+    );
   };
 
   const sendMessage = () => {
@@ -281,12 +311,6 @@ const Chat = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const fileInputRef = useRef(null);
-
-  const handleIconClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const formatDateLabel = (dateStr) => {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return ''; // ⛔ Invalid Date fallback
@@ -334,8 +358,8 @@ const Chat = () => {
   return (
     <div className='m-auto flex flex-col item-center h-screen'>
       <div className='m-auto min-w-[300px] w-full max-w-[80vw]'>
-        <h2 className='text-2xl font-bold mb-5 text-center'>Chat</h2>
-        <div className='bg-white pt-8 pl-8 pr-2 rounded-lg shadow-lg min-h-[80vh] '>
+        {/* <h2 className='text-2xl font-bold mb-5 text-center'>Chat</h2> */}
+        <div className='bg-white pt-8 pl-8 pr-2 rounded-lg shadow-lg min-h-[80vh] relative'>
           <div className='pb-2.5 relative'>
             <h2 className='text-xl font-bold mb-1'>{toUser.username}</h2>
             <p className='text-sm font-normal'>{toUser.mobile	}</p>
@@ -383,27 +407,19 @@ const Chat = () => {
                 </React.Fragment>
               );
             })}
-          </div>
-
           <div ref={bottomRef} />
+          </div>
           <div className='typesec flex items-center pt-2 pb-4'>
-              <div className='w-[65vw] flex items-center relative'>
-                  <input
-                    value={text}
-                    onChange={handleTyping}
-                    placeholder="Type a message..."
-                    className='bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500'
-                  />
-                  <div onClick={handleIconClick} className="cursor-pointer text-lg absolute right-3">
-                    <MdOutlineAddPhotoAlternate />
-                    <input
-                      ref={fileInputRef}
-                      id="uploadmedia"
-                      className="hidden"
-                      type="file"
-                      onChange={handleFileChange}
-                    />
-                  </div>
+              <div className="w-[65vw] flex items-center relative">
+                <input
+                  value={text}
+                  onChange={handleTyping}
+                  placeholder="Type a message..."
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white mr-2"
+                />
+                <div className="relative">
+                  <FileUploadInput onFileSelected={handleFileChange} />
+                </div>
               </div>
               <div className='w-auto ml-auto pr-5'>
                   <button className="text-white ml-auto bg-blue-500 shadow-lg shadow-blue-500/50 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" onClick={sendMessage}>Send</button>
@@ -441,6 +457,11 @@ const Chat = () => {
                 </div>
               )}
           </div>
+          {isUploading && (
+            <div className="absolute top-0 right-0 left-0 bottom-0 flex items-center mx-auto bg-opacity-80 bg-black">
+              <span className='text-lg text-blue-200 animate-pulse text-center w-full'>Uploading Please Wait...</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

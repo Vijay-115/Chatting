@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_APP_API_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_APP_API_URL || 'https://backend.chat-vd.xyz',
   withCredentials: true,
 });
 
@@ -25,5 +25,10 @@ export const sendMessage = (messageData) => API.post('/api/messages/send', messa
 export const markMessagesRead = (fromUserId) =>  API.post('/api/messages/read', fromUserId );
 
 // ===== File Upload =====
-export const uploadFile = (uploadData) =>  API.post('/api/upload', uploadData );
+export const uploadFile = (uploadData) =>  API.post('/api/upload', uploadData, {
+  headers: {
+    'Content-Type': 'multipart/form-data',
+  },
+  withCredentials: true,
+});
 export const verifyMedia = (verifyData) =>  API.post('/api/verify-media', verifyData );

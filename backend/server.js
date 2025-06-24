@@ -1,53 +1,56 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const http = require('http');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
+const path = require('path');
 const cors = require('cors');
-const path = require('path'); // <-- add this
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
-const initSocket = require('./socket');
-const cookieParser = require('cookie-parser');
 const uploadRoutes = require('./routes/upload');
 const mediaRoutes = require('./routes/media');
+const initSocket = require('./socket');
 
 dotenv.config();
-const app = express();
 
+const app = express();
+const server = http.createServer(app);
+
+// ✅ CORS + Preflight support
 app.use(cors({
-  origin: 'http://localhost:5173', 
-  credentials: true, 
+  origin: 'https://chat-vd.xyz',
+  credentials: true,
 }));
 
-// app.use((req, res, next) => {
-//   console.log("Request Origin:", req.headers.origin);
-//   next();
-// });
-
+// ✅ Middleware
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '30mb' }));
+app.use(express.urlencoded({ limit: '30mb', extended: true }));
 
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+// ✅ MongoDB
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => console.error('❌ MongoDB connection error:', err));
 
+// ✅ Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', require('./routes/messages'));
-
-// Serve media folder
 app.use('/media', express.static(path.join(__dirname, 'media')));
 app.use('/api', uploadRoutes);
-app.use('/api',mediaRoutes);
+app.use('/api', mediaRoutes);
 
-const PORT = process.env.PORT || 5000;
-
-// Create HTTP server and then pass it to socket.io initializer
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// ✅ Health check
+app.get('/', (req, res) => {
+  res.send('✅ Chat backend is live!');
 });
 
-// Initialize socket with the created server
+// ✅ Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+// ✅ Start WebSocket
 initSocket(server);

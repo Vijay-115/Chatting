@@ -1,4 +1,3 @@
-// context/SocketContext.jsx
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
@@ -14,9 +13,9 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      const s = io('http://localhost:5000', {
+      const s = io('https://backend.chat-vd.xyz', {
         auth: { token },
-        transports: ['websocket'],
+        transports: ['polling'], // 🔥 Important: use only polling
         reconnectionAttempts: 5,
       });
 
@@ -25,6 +24,10 @@ export const SocketProvider = ({ children }) => {
 
       s.on('connect', () => {
         console.log('✅ Socket connected');
+      });
+
+      s.on('connect_error', (err) => {
+        console.error('❌ Socket error:', err.message);
       });
 
       return () => s.disconnect();

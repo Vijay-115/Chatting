@@ -10,7 +10,7 @@ const onlineUsers = new Map();
 const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: 'http://localhost:5173',
+      origin: 'https://chat-vd.xyz',
       credentials: true,
     },
   });

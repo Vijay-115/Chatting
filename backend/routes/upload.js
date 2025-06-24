@@ -1,4 +1,6 @@
+// routes/upload.js
 const express = require('express');
+const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
@@ -8,25 +10,28 @@ if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir);
 }
 
-router.post('/upload', async (req, res) => {
-  try {
-    const { data, name } = req.body;
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-    if (!data || !name) {
-      return res.status(400).json({ error: 'Missing base64 data or name' });
+router.post('/upload', upload.single('file'), (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const filename = `${Date.now()}-${name}.txt`;
+    const base64Data = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+    const filename = `${Date.now()}-${file.originalname}.txt`;
     const filePath = path.join(mediaDir, filename);
 
-    // Save raw base64 string into a .txt file
-    fs.writeFileSync(filePath, data, 'utf8');
+    fs.writeFileSync(filePath, base64Data, 'utf8');
 
     const relativePath = `/media/${filename}`;
     res.json({ filePath: relativePath });
   } catch (err) {
     console.error('Upload error:', err);
-    res.status(500).json({ error: 'Failed to save base64 text' });
+    res.status(500).json({ error: 'Failed to upload file' });
   }
 });
 
